@@ -1,22 +1,26 @@
-var EventEmitter = require('events');
-var fs = require('fs');
-var child_process = require('child_process');
-var _ = require('lodash');
-var os = require('os');
-var path = require('path');
+const EventEmitter = require('events');
+const fs = require('fs');
+const child_process = require('child_process');
+const _ = require('lodash');
+const os = require('os');
+const path = require('path');
 
-var emitter = new EventEmitter();
+const emitter = new EventEmitter();
+
+let channel, errorChannel
 
 function IconExtractor(){
 
-  var self = this;
-  var iconDataBuffer = "";
+  const self = this;
+  let iconDataBuffer = "";
 
   this.emitter = new EventEmitter();
   this.iconProcess = child_process.spawn(getPlatformIconProcess(),['-x']);
 
-  this.getIcon = function(context, path){
-    var json = JSON.stringify({context: context, path: path}) + "\n";
+  this.getIcon = function(context, path, channel = 'icon', errorChannel = 'error'){
+    channel = channel
+    errorChannel = errorChannel
+    const json = JSON.stringify({context: context, path: path}) + "\n";
     self.iconProcess.stdin.write(json);
   }
 
@@ -39,7 +43,7 @@ function IconExtractor(){
       }
 
       try{
-        self.emitter.emit('icon', JSON.parse(buf));
+        self.emitter.emit(channel, JSON.parse(buf));
       } catch(ex){
         self.emitter.emit('error', ex);
       }
@@ -48,11 +52,11 @@ function IconExtractor(){
   });
 
   this.iconProcess.on('error', function(err){
-    self.emitter.emit('error', err.toString());
+    self.emitter.emit(errorChannel, err.toString());
   });
 
   this.iconProcess.stderr.on('data', function(err){
-    self.emitter.emit('error', err.toString());
+    self.emitter.emit(errorChannel, err.toString());
   });
 
   function getPlatformIconProcess(){
